@@ -3,11 +3,12 @@ import subprocess
 from PIL import Image
 import argparse
 
-parser = argparse.ArgumentParser(description="Process an input file.")
-parser.add_argument("input_path", help="Path to the input file")
-args = parser.parse_args()
-#input_image_path = "G:\\Python_Projects\\vtf_convert\\116788986_p8.jpg".replace("\\","/")
-input_image_path = str(args.input_path).replace("\\", "/")
+landscape = False
+# parser = argparse.ArgumentParser(description="Process an input file.")
+# parser.add_argument("input_path", help="Path to the input file")
+# args = parser.parse_args()
+input_image_path = "G:\\Python_Projects\\vtf_convert\\116614094_p2.png".replace("\\","/")
+#input_image_path = str(args.input_path).replace("\\", "/")
 image_folder = '/'.join(input_image_path.split("/")[:-1]) + '/'
 file_name = (input_image_path.split("/")[-1]).split(".")[0]
 print(f"Input image: {input_image_path}\n")
@@ -21,6 +22,8 @@ def resize_and_center_image(original_png_path):
         # Determine the scaling factor
         if original_width >= original_height:
             # Image is wider than tall or square
+            global landscape
+            landscape = True
             scaling_factor = 1024 / float(original_width)
         else:
             # Image is taller than wide
@@ -86,6 +89,8 @@ def dds_to_vtf(dds_image_path):
     output_path = image_folder + file_name + ".vtf"
     hex_string = "56 54 46 00 07 00 00 00 01 00 00 00 40 00 00 00 FC 03 00 04 00 03 00 00 01 00 00 00 78 00 1A 02 00 6C 1C 3F 9F A4 C6 3E 24 BD A2 3E 05 FF 57 7C 00 00 80 3F 0D 00 00 00 01 0D 00 00 00 FE 00 01"
     # Remove spaces and convert to bytes
+    if landscape:
+        hex_string = "56 54 46 00 07 00 00 00 01 00 00 00 40 00 00 00 00 04 FC 03 00 03 00 00 01 00 00 00 78 00 1A 02 00 6C 1C 3F 9F A4 C6 3E 24 BD A2 3E 05 FF 57 7C 00 00 80 3F 0D 00 00 00 01 0D 00 00 00 00 FE 01"
     hex_bytes = bytes.fromhex(hex_string.replace(" ", ""))
 
     # Read the DDS file as binary

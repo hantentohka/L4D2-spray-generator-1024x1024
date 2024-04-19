@@ -1,2 +1,8 @@
 venv/
-.idea
+.idea.
+*.vtf
+main.spec
+dist/
+build/
+*.png
+.idea/
