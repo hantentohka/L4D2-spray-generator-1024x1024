@@ -4,11 +4,11 @@ from PIL import Image
 import argparse
 
 landscape = False
-# parser = argparse.ArgumentParser(description="Process an input file.")
-# parser.add_argument("input_path", help="Path to the input file")
-# args = parser.parse_args()
-input_image_path = "G:\\Python_Projects\\vtf_convert\\116614094_p2.png".replace("\\","/")
-#input_image_path = str(args.input_path).replace("\\", "/")
+parser = argparse.ArgumentParser(description="Process an input file.")
+parser.add_argument("input_path", help="Path to the input file")
+args = parser.parse_args()
+#input_image_path = "G:\\Python_Projects\\vtf_convert\\116614094_p2.png".replace("\\","/")
+input_image_path = str(args.input_path).replace("\\", "/")
 image_folder = '/'.join(input_image_path.split("/")[:-1]) + '/'
 file_name = (input_image_path.split("/")[-1]).split(".")[0]
 print(f"Input image: {input_image_path}\n")
