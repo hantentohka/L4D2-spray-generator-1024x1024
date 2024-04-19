@@ -7,7 +7,7 @@ landscape = False
 parser = argparse.ArgumentParser(description="Process an input file.")
 parser.add_argument("input_path", help="Path to the input file")
 args = parser.parse_args()
-#input_image_path = "G:\\Python_Projects\\vtf_convert\\116614094_p2.png".replace("\\","/")
+#input_image_path = "G:\\Python_Projects\\vtf_convert\\full.jpg".replace("\\","/")
 input_image_path = str(args.input_path).replace("\\", "/")
 image_folder = '/'.join(input_image_path.split("/")[:-1]) + '/'
 file_name = (input_image_path.split("/")[-1]).split(".")[0]
@@ -23,7 +23,8 @@ def resize_and_center_image(original_png_path):
         if original_width >= original_height:
             # Image is wider than tall or square
             global landscape
-            landscape = True
+            if original_width > original_height:
+                landscape = True
             scaling_factor = 1024 / float(original_width)
         else:
             # Image is taller than wide
