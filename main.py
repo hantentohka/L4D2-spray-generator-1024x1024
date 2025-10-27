@@ -9,29 +9,65 @@ VTF_256_ONE_FRAME_SIZE = 34
 VTF_512_ONE_FRAME_SIZE = 130
 
 vtf_size_dict = {128: VTF_128_ONE_FRAME_SIZE, 256: VTF_256_ONE_FRAME_SIZE, 512: VTF_512_ONE_FRAME_SIZE,}
+
+mip_levels = {
+    0: 512,
+    1: 256,
+    2: 128,
+    3: 64,
+    4: 32,
+    5: 16,
+    6: 8,
+    7: 4,
+    8: 2,
+    9: 1
+}
+
 landscape = False
+input_image_path = None
 parser = argparse.ArgumentParser(description="Process an input file.")
-parser.add_argument("input_path", help="Path to the input file")
+parser.add_argument("input_paths", nargs="+", help="Paths to input files")
 args = parser.parse_args()
 
 
-def extract_image_folder(full_path):
-    return '/'.join(full_path.split("/")[:-1]) + '/'
-def extract_image_filename(full_path):
-    return (full_path.split("/")[-1]).split(".")[0]
+# def extract_image_folder(full_path):
+#     return '/'.join(full_path.split("/")[:-1]) + '/'
+# def extract_image_filename(full_path):
+#     return (full_path.split("/")[-1]).split(".")[0]
+
+
+def extract_image_folder(path):
+    """
+    Return the folder containing the file, with a trailing slash.
+    """
+    folder = os.path.dirname(path)
+    # Ensure trailing slash
+    return os.path.join(folder, '')
+
+def extract_image_filename(path):
+    """
+    Return the file name without extension.
+    """
+    base_name = os.path.basename(path)           # 'file.png'
+    name_without_ext, _ = os.path.splitext(base_name)  # ('file', '.png')
+    return name_without_ext
 
 # input_image_path = "G:\\Python_Projects\\vtf_convert\\full.jpg".replace("\\","/")
 # input_image_path = "G:\\Python_Projects\\vtf_convert\\bounce.gif".replace("\\","/")
-input_image_path = str(args.input_path).replace("\\", "/")
-image_folder = extract_image_folder(input_image_path)
-file_name = extract_image_filename(input_image_path)
-print(f"Input image: {input_image_path}\n")
+if len(args.input_paths) == 1:
+    input_image_path = str(args.input_paths[0]).replace("\\", "/")
+    image_folder = extract_image_folder(input_image_path)
+    file_name = extract_image_filename(input_image_path)
+    print(f"Input image: {input_image_path}\n")
+else:
+    mipmaps_paths = [os.path.normpath(input_path) for input_path in args.input_paths]
+    print(f"Generating multi mipmap spray starting from {os.path.splitext(os.path.basename(mipmaps_paths[0]))[0]}")
+    input_image_path = mipmaps_paths[0]
+    image_folder = os.path.dirname(mipmaps_paths[0])
+    file_name = os.path.splitext(os.path.basename(mipmaps_paths[0]))[0]
 
-
-def resize_and_center_image(original_png_path, width=1024, height=1020, GIF=False):
-    output_path = image_folder + "resized_" + file_name + ".png"
-    if GIF:
-        output_path = extract_image_folder(original_png_path) + "resized_" + extract_image_filename(original_png_path) + ".png"
+def resize_and_center_image(original_png_path, width=1024, height=1020):
+    output_path = extract_image_folder(original_png_path) + "resized_" + extract_image_filename(original_png_path) + ".png"
     with Image.open(original_png_path) as img:
         # Get the original width and height of the image
         original_width, original_height = img.size
@@ -89,10 +125,8 @@ def resize_and_center_image(original_png_path, width=1024, height=1020, GIF=Fals
         return output_path
 
 
-def image_to_dds(resized_image_path, GIF=False):
-    output_path = image_folder + file_name + ".dds"
-    if GIF:
-        output_path = extract_image_folder(resized_image_path) + extract_image_filename(resized_image_path) + ".dds"
+def image_to_dds(resized_image_path):
+    output_path = extract_image_folder(resized_image_path) + extract_image_filename(resized_image_path) + ".dds"
     default_executable_path = "C:\\Program Files\\NVIDIA Corporation\\NVIDIA Texture Tools\\nvcompress.exe"
     executable_path = default_executable_path
     if not os.path.exists(default_executable_path):
@@ -172,9 +206,9 @@ def get_frames_summing_under_512KB(all_vtf_frames, size):
     return selected_vtf_frames
 
 
-def generate_vtf(size):
-    resized_frame_paths = [resize_and_center_image(frame_path,size, size, GIF=True) for frame_path in frame_paths]
-    dds_paths = [image_to_dds(dds_path, GIF=True) for dds_path in resized_frame_paths]
+def generate_animated_vtf(size):
+    resized_frame_paths = [resize_and_center_image(frame_path,size, size) for frame_path in frame_paths]
+    dds_paths = [image_to_dds(dds_path) for dds_path in resized_frame_paths]
     dxt1_images = [gif_to_vtf.read_dxt1_image(dds_path) for dds_path in dds_paths]
     dxt_images_trimmed = get_frames_summing_under_512KB(dxt1_images, size)
     vtf_data = gif_to_vtf.create_vtf(dxt_images_trimmed, size)
@@ -182,18 +216,33 @@ def generate_vtf(size):
     [os.remove(resized_frame_path) for resized_frame_path in resized_frame_paths]
     [os.remove(dds_path) for dds_path in dds_paths]
 
+def generate_multimipmap_vtf(mipmap_paths):
+    resized_mipmaps_paths = [resize_and_center_image(frame_path, mip_levels[idx], mip_levels[idx]) for idx, frame_path in enumerate(mipmap_paths)]
+    dds_paths = [image_to_dds(dds_path) for dds_path in resized_mipmaps_paths]
+    dxt1_images = [gif_to_vtf.read_dxt1_image(dds_path) for dds_path in dds_paths]
+    vtf_data = gif_to_vtf.create_vtf(dxt1_images, 512, len(mipmaps_paths))
+    gif_to_vtf.write_vtf(vtf_data, os.path.join(image_folder, os.path.splitext(os.path.basename(mipmaps_paths[0]))[0] + "_"  + ".vtf"))
+    [os.remove(resized_frame_path) for resized_frame_path in resized_mipmaps_paths]
+    [os.remove(dds_path) for dds_path in dds_paths]
 
-if input_image_path.endswith(".gif"):
-    frame_paths = gif_to_jpg(input_image_path)
-    generate_vtf(128)
-    generate_vtf(256)
-    generate_vtf(512)
-    [os.remove(frame_path) for frame_path in frame_paths]
+
+if len(args.input_paths) == 1:
+    if input_image_path.endswith(".gif"):
+        frame_paths = gif_to_jpg(input_image_path)
+        generate_animated_vtf(128)
+        generate_animated_vtf(256)
+        generate_animated_vtf(512)
+        [os.remove(frame_path) for frame_path in frame_paths]
+    else:
+        resized_image_path = resize_and_center_image(input_image_path)
+        dds_path = image_to_dds(resized_image_path)
+        dds_to_vtf(dds_path)
+
+        os.remove(resized_image_path)
+        os.remove(dds_path)
+
 else:
-    resized_image_path = resize_and_center_image(input_image_path)
-    dds_path = image_to_dds(resized_image_path)
-    dds_to_vtf(dds_path)
+    generate_multimipmap_vtf(mipmaps_paths)
 
-    os.remove(resized_image_path)
-    os.remove(dds_path)
-    input("Press Enter to exit...")
+input("Press Enter to exit...")
+

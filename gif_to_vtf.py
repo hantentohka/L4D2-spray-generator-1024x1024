@@ -1,7 +1,7 @@
 import struct
 
 
-def create_vtf_header(size, gif_frame_no):
+def create_vtf_header(size, gif_frame_no, mipmaps = 1):
     # Define the values for the VTF header
     signature = b'VTF\0'             # File signature ("VTF\0")
     version = [7, 1]                 # Version (major, minor)
@@ -25,6 +25,8 @@ def create_vtf_header(size, gif_frame_no):
     numResources = 0x0100FE                 # Number of resources this VTF has (unsigned int)
     padding3 = b'\0\0\0\0\0\0\0\0'   # Padding for alignment (8 bytes)
 
+    if mipmaps != 1:
+        flags = 0x000200
     vtf_header = struct.pack(
         #'4s 2I I 2H I 2H 4x 3f 4x f i B i B B H 3x I 4x',
         #'=4s 2I I 2H I 2H 3f f i B i B B x H 2x I',
@@ -49,23 +51,31 @@ def create_vtf_header(size, gif_frame_no):
         # numResources,               # 'I' for 4-byte unsigned integer
         # #padding3                    # '8x' for 8 bytes of padding
     )
-    hex_string = "78 00 1A 02 00 6C 1C 3F 9F A4 C6 3E 23 BD A2 3E 05 FF 57 7C 00 00 80 3F 0D 00 00 00 01 0D 00 00 00 FE 00 BA"
+    hex_string = f"78 00 1A 02 00 6C 1C 3F 9F A4 C6 3E 23 BD A2 3E 05 FF 57 7C 00 00 80 3F 0D 00 00 00 0{mipmaps} 0D 00 00 00 FE 00 BA"
     hex_bytes = bytes.fromhex(hex_string.replace(" ", ""))
     return vtf_header + hex_bytes
 
-def create_vtf(dxt1_images, size=128):
+def create_vtf(dxt1_images, size=128, mipmaps = 1):
     VTF_HEADER_SIZE = 80  # 80 bytes for the header
 
+    if mipmaps == 1:
+        gif_frame_no = len(dxt1_images)
+    else:
+        gif_frame_no = 1
     # Create the VTF header
-    header = create_vtf_header(size, len(dxt1_images))
+    header = create_vtf_header(size, gif_frame_no, mipmaps= mipmaps)
 
     #assert len(header) == VTF_HEADER_SIZE, f"Header size is {len(header)} bytes, expected {VTF_HEADER_SIZE} bytes."
 
     # Combine the header and the DXT1 image data
     vtf_data = bytearray(header)
 
-    for image in dxt1_images:
-        vtf_data.extend(image)
+    if mipmaps == 1:
+        for image in dxt1_images:
+            vtf_data.extend(image)
+    else:
+        for image in dxt1_images[::-1]:
+            vtf_data.extend(image)
 
     return vtf_data
 

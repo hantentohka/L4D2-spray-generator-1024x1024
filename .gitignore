@@ -1,7 +1,6 @@
 venv/
 .idea.
 *.vtf
-main.spec
 dist/
 build/
 *.png
